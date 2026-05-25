@@ -1,0 +1,28 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "이지영",
+      "birth_year": 1994,
+      "age": 32,
+      "education": [],
+      "career": [
+        {"company": "LG화학", "department": null, "duration_years": 5, "description": "영업"},
+        {"company": "LG디스플레이", "department": "마케팅", "duration_years": 1, "description": null}
+      ],
+      "languages": [],
+      "strengths": ["영업 베테랑"],
+      "certifications": [],
+      "notes": "LG에 재입사 의향 없음"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": false,
+  "deadline": null,
+  "raw_notes": null
+}

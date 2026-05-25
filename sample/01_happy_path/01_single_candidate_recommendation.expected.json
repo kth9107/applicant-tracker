@@ -1,0 +1,40 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": {
+    "name": "유민정",
+    "email": null,
+    "company": "JAC Recruitment Korea",
+    "role": null
+  },
+  "recipient": {
+    "name": "최은하",
+    "email": null,
+    "company": "케미콘일렉트로닉스코리아",
+    "role": "담당자"
+  },
+  "hiring_company": "케미콘일렉트로닉스코리아",
+  "position": "영업",
+  "candidates": [
+    {
+      "name": "김대호",
+      "birth_year": 1997,
+      "age": 29,
+      "education": [
+        {"school": "레이타쿠대학교", "major": null, "degree": null}
+      ],
+      "career": [
+        {"company": "한국 연구관련회사", "department": null, "duration_years": null, "description": "사무직"},
+        {"company": "일본 현지 기업", "department": null, "duration_years": null, "description": "무역사무"}
+      ],
+      "languages": ["일본어"],
+      "strengths": ["커뮤니케이션 능력", "긍정적인 태도", "높은 학습 의욕", "대인 대응 능력"],
+      "certifications": ["운전면허"],
+      "notes": "실제 운전 가능"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": "금주 금요일",
+  "raw_notes": null
+}

@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RecruitmentEmailParseResult",
+  "description": "헤드헌터-인사담당자 간 채용 메일 파싱 결과 스키마",
+  "type": "object",
+  "required": ["email_type", "is_recruitment_email"],
+  "properties": {
+    "is_recruitment_email": {
+      "type": "boolean",
+      "description": "이 메일이 채용 관련 메일인지 여부. false면 다른 필드는 모두 null/빈 배열"
+    },
+    "email_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "candidate_recommendation",
+        "screening_result",
+        "interview_schedule",
+        "interview_result",
+        "offer",
+        "rejection",
+        "withdrawal",
+        "inquiry",
+        "other",
+        null
+      ],
+      "description": "추천/서류결과/면접일정/면접결과/오퍼/불합격/사퇴/문의/기타"
+    },
+    "sender": {
+      "type": ["object", "null"],
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "email": {"type": ["string", "null"]},
+        "company": {"type": ["string", "null"]},
+        "role": {"type": ["string", "null"]}
+      }
+    },
+    "recipient": {
+      "type": ["object", "null"],
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "email": {"type": ["string", "null"]},
+        "company": {"type": ["string", "null"]},
+        "role": {"type": ["string", "null"]}
+      }
+    },
+    "hiring_company": {
+      "type": ["string", "null"],
+      "description": "채용을 진행하는 회사명"
+    },
+    "position": {
+      "type": ["string", "null"],
+      "description": "채용 포지션"
+    },
+    "candidates": {
+      "type": "array",
+      "description": "메일에 언급된 후보자 목록 (0~N명)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": ["string", "null"]},
+          "birth_year": {"type": ["integer", "null"]},
+          "age": {"type": ["integer", "null"]},
+          "education": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "school": {"type": ["string", "null"]},
+                "major": {"type": ["string", "null"]},
+                "degree": {"type": ["string", "null"]}
+              }
+            }
+          },
+          "career": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "company": {"type": ["string", "null"]},
+                "department": {"type": ["string", "null"]},
+                "duration_years": {"type": ["number", "null"]},
+                "description": {"type": ["string", "null"]}
+              }
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "strengths": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "certifications": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "notes": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "process_status": {
+      "type": ["object", "null"],
+      "description": "전형 진행 상태 (해당 시에만)",
+      "properties": {
+        "stage": {
+          "type": ["string", "null"],
+          "enum": ["document_review", "first_interview", "second_interview", "final_interview", "offer", null]
+        },
+        "result": {
+          "type": ["string", "null"],
+          "enum": ["pass", "fail", "pending", null]
+        },
+        "next_step": {"type": ["string", "null"]},
+        "schedule": {
+          "type": ["object", "null"],
+          "properties": {
+            "date": {"type": ["string", "null"], "description": "YYYY-MM-DD 또는 자연어"},
+            "time": {"type": ["string", "null"], "description": "HH:MM 24h"},
+            "location": {"type": ["string", "null"]}
+          }
+        }
+      }
+    },
+    "has_attachment": {
+      "type": ["boolean", "null"],
+      "description": "이력서 등 첨부파일 언급 여부"
+    },
+    "deadline": {
+      "type": ["string", "null"],
+      "description": "메일에 언급된 마감/기한"
+    },
+    "raw_notes": {
+      "type": ["string", "null"],
+      "description": "스키마에 안 들어가지만 중요한 정보 (자유 텍스트)"
+    }
+  }
+}

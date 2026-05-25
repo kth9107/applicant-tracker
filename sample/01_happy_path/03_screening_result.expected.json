@@ -1,0 +1,44 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "screening_result",
+  "sender": {
+    "name": "최은하",
+    "email": "eh.choi@chemi-kor.co.kr",
+    "company": "케미콘일렉트로닉스코리아",
+    "role": "인사팀 차장"
+  },
+  "recipient": {
+    "name": "유민정",
+    "email": "minjeong.yoo@jac-recruitment.kr",
+    "company": "JAC Recruitment",
+    "role": null
+  },
+  "hiring_company": "케미콘일렉트로닉스코리아",
+  "position": null,
+  "candidates": [
+    {
+      "name": "김대호",
+      "birth_year": 1997,
+      "age": null,
+      "education": [],
+      "career": [],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": {
+    "stage": "document_review",
+    "result": "pass",
+    "next_step": "1차 면접",
+    "schedule": {
+      "date": "다음 주 화요일",
+      "time": "14:00",
+      "location": null
+    }
+  },
+  "has_attachment": false,
+  "deadline": null,
+  "raw_notes": null
+}

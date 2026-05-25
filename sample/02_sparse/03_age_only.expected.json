@@ -1,0 +1,29 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "정수민",
+      "birth_year": null,
+      "age": 35,
+      "education": [
+        {"school": "서울대", "major": null, "degree": null}
+      ],
+      "career": [
+        {"company": "외국계 화학회사", "department": null, "duration_years": 8, "description": "영업"}
+      ],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": null,
+  "has_attachment": false,
+  "deadline": null,
+  "raw_notes": null
+}

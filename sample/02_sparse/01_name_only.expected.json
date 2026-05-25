@@ -1,0 +1,25 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "박지훈",
+      "birth_year": null,
+      "age": null,
+      "education": [],
+      "career": [],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

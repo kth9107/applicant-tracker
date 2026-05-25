@@ -1,0 +1,40 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": {
+    "name": "박매니저",
+    "email": "pm@headhunt.kr",
+    "company": "HeadHunt Korea",
+    "role": null
+  },
+  "recipient": {
+    "name": "최은하",
+    "email": "eh.choi@chemi-kor.co.kr",
+    "company": "케미콘일렉트로닉스코리아",
+    "role": "담당자"
+  },
+  "hiring_company": "케미콘일렉트로닉스코리아",
+  "position": "영업",
+  "candidates": [
+    {
+      "name": "이영희",
+      "birth_year": 1995,
+      "age": 31,
+      "education": [
+        {"school": "연세대학교", "major": "경영학과", "degree": "학사"}
+      ],
+      "career": [
+        {"company": "LG전자", "department": "영업기획팀", "duration_years": 3, "description": null},
+        {"company": "삼성SDS", "department": null, "duration_years": 2, "description": "B2B 영업"}
+      ],
+      "languages": ["영어", "일본어"],
+      "strengths": ["B2B 영업"],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

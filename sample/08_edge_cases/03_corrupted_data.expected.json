@@ -1,0 +1,25 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "오타치",
+      "birth_year": 2099,
+      "age": -5,
+      "education": [],
+      "career": [],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": "데이터 이상치: 출생연도/나이 비현실적, 학력/경력 정보 누락"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": false,
+  "deadline": null,
+  "raw_notes": "전반적으로 데이터 누락 또는 손상된 메일"
+}

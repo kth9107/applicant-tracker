@@ -1,0 +1,13 @@
+{
+  "is_recruitment_email": false,
+  "email_type": null,
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": null,
+  "candidates": [],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

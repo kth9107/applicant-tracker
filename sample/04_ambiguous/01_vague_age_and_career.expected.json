@@ -1,0 +1,27 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": "영업",
+  "candidates": [
+    {
+      "name": "이수영",
+      "birth_year": null,
+      "age": null,
+      "education": [],
+      "career": [
+        {"company": null, "department": null, "duration_years": null, "description": "영업 7~8년, 동종 업계 경험"}
+      ],
+      "languages": ["영어"],
+      "strengths": [],
+      "certifications": [],
+      "notes": "30대 초반, 명문대 출신, 영어 비즈니스 회화 가능 수준"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

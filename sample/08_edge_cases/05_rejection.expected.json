@@ -1,0 +1,40 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "interview_result",
+  "sender": {
+    "name": "최은하",
+    "email": null,
+    "company": "케미콘일렉트로닉스코리아",
+    "role": "인사팀"
+  },
+  "recipient": {
+    "name": "유민정",
+    "email": null,
+    "company": null,
+    "role": null
+  },
+  "hiring_company": "케미콘일렉트로닉스코리아",
+  "position": null,
+  "candidates": [
+    {
+      "name": "이미연",
+      "birth_year": 1998,
+      "age": null,
+      "education": [],
+      "career": [],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": {
+    "stage": "first_interview",
+    "result": "fail",
+    "next_step": "다음 후보자 추천 요청",
+    "schedule": null
+  },
+  "has_attachment": false,
+  "deadline": null,
+  "raw_notes": "불합격 사유: 화학 산업 도메인 이해도 부족"
+}

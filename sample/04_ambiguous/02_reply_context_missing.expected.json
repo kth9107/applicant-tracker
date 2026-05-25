@@ -1,0 +1,44 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "interview_schedule",
+  "sender": {
+    "name": null,
+    "email": "hr@chemikor.com",
+    "company": "케미콘",
+    "role": null
+  },
+  "recipient": {
+    "name": null,
+    "email": "jobs@partnersearch.kr",
+    "company": null,
+    "role": null
+  },
+  "hiring_company": "케미콘",
+  "position": null,
+  "candidates": [
+    {
+      "name": "박철수",
+      "birth_year": null,
+      "age": null,
+      "education": [],
+      "career": [],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": {
+    "stage": "first_interview",
+    "result": "pending",
+    "next_step": "1차 면접",
+    "schedule": {
+      "date": "다음 주 수요일",
+      "time": "오후",
+      "location": "본사 5층 회의실"
+    }
+  },
+  "has_attachment": false,
+  "deadline": null,
+  "raw_notes": null
+}

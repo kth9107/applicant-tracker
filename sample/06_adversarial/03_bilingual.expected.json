@@ -1,0 +1,42 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": {
+    "name": "Sarah Park",
+    "email": "sarah.park@heidrick.com",
+    "company": "Heidrick & Struggles Korea",
+    "role": "Director, Executive Search"
+  },
+  "recipient": {
+    "name": "최은하",
+    "email": null,
+    "company": "Chemicon Electronics Korea",
+    "role": null
+  },
+  "hiring_company": "Chemicon Electronics Korea",
+  "position": "Sales Manager",
+  "candidates": [
+    {
+      "name": "김다윗",
+      "birth_year": 1988,
+      "age": 38,
+      "education": [
+        {"school": "Seoul National University", "major": null, "degree": null},
+        {"school": "Wharton", "major": null, "degree": "MBA"}
+      ],
+      "career": [
+        {"company": "Samsung Electronics", "department": "Global Sales", "duration_years": 5, "description": null},
+        {"company": "Goldman Sachs HK", "department": "Corporate Banking", "duration_years": 3, "description": null},
+        {"company": "McKinsey & Company Korea", "department": null, "duration_years": 2, "description": "VP"}
+      ],
+      "languages": ["Korean", "English", "Mandarin"],
+      "strengths": [],
+      "certifications": [],
+      "notes": "영문명 David Kim"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": "이력서 한국어/영어 두 버전 첨부, 다음 주 중 인터뷰 가능 여부 회신 요청"
+}

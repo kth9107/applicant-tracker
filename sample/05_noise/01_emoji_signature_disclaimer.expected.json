@@ -1,0 +1,39 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": {
+    "name": "유민정",
+    "email": "minjeong.yoo@jac-recruitment.kr",
+    "company": "JAC Recruitment Korea",
+    "role": "컨설턴트"
+  },
+  "recipient": {
+    "name": "최은하",
+    "email": null,
+    "company": null,
+    "role": "담당자"
+  },
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "윤지수",
+      "birth_year": 1993,
+      "age": 33,
+      "education": [
+        {"school": "한양대학교", "major": "무역학과", "degree": null}
+      ],
+      "career": [
+        {"company": "현대상사", "department": null, "duration_years": 5, "description": "해외영업"}
+      ],
+      "languages": ["영어", "중국어"],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

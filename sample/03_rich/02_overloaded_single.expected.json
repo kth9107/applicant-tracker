@@ -1,0 +1,45 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": {
+    "name": "유민정",
+    "email": null,
+    "company": "JAC Recruitment Korea",
+    "role": null
+  },
+  "recipient": {
+    "name": "최은하",
+    "email": null,
+    "company": null,
+    "role": "담당자"
+  },
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "한지영",
+      "birth_year": 1985,
+      "age": 41,
+      "education": [
+        {"school": "한영외국어고등학교", "major": "일본어과", "degree": "고졸"},
+        {"school": "서울대학교", "major": "화학과", "degree": "학사"},
+        {"school": "KAIST", "major": "화학공학과", "degree": "석사"},
+        {"school": "MIT", "major": "Chemical Engineering", "degree": "박사"},
+        {"school": "Stanford University", "major": null, "degree": "Post-doc"}
+      ],
+      "career": [
+        {"company": "Bayer AG", "department": null, "duration_years": 3, "description": "독일 본사 연구원, 신소재 R&D, 특허 12건 출원"},
+        {"company": "DuPont Korea", "department": "기술영업팀", "duration_years": 3.83, "description": "차장, 글로벌 고객사 대응, 매출 30% 증가 기여"},
+        {"company": "머크코리아", "department": "마케팅본부", "duration_years": 4.42, "description": "부장, 한국/일본/중국 시장 총괄, 팀원 12명 관리"}
+      ],
+      "languages": ["영어", "일본어", "독일어", "중국어"],
+      "strengths": ["화학 산업 박사급 전문성", "글로벌 3개 대륙 근무 경험", "영업 및 R&D 양쪽 경험 보유", "리더십"],
+      "certifications": ["PMP", "Six Sigma Black Belt", "변리사", "운전면허 1종 보통"],
+      "notes": "서울대 수석 졸업, MIT 4년 박사, MBTI ENTJ, 자차 보유, 연봉 협상 가능 범위 사전 협의 완료"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": "이력서 30페이지"
+}

@@ -1,0 +1,35 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": {
+    "name": "최은하",
+    "email": null,
+    "company": null,
+    "role": "담당자"
+  },
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "정민호",
+      "birth_year": 1994,
+      "age": 32,
+      "education": [
+        {"school": "고려대학교", "major": "경영학과", "degree": null}
+      ],
+      "career": [
+        {"company": "SK텔레콤", "department": "영업기획팀", "duration_years": 3, "description": null},
+        {"company": "KT", "department": null, "duration_years": 4, "description": "영업"}
+      ],
+      "languages": ["영어", "중국어"],
+      "strengths": ["통신업계 인맥", "B2B 영업 경험"],
+      "certifications": ["운전면허"],
+      "notes": "자차 보유, 출장 가능"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

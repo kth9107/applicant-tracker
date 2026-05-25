@@ -1,0 +1,17 @@
+보낸사람: 박도겸 <dk.park@hireflow.kr>
+받는사람: 장현우 <hw.jang@novafin.co.kr>
+제목: [추천] 노바핀 DevOps 포지션 - 서민규
+
+노바핀 주식회사
+장현우 담당자님,
+
+DevOps 포지션 후보자 추천드립니다.
+
+서민규 (1995년생, 만 31세)
+- 인하대학교 컴퓨터공학과 졸업
+- 금융 SaaS 인프라 운영 5년
+- Terraform, Kubernetes, GitHub Actions 가능
+- 장애 대응 자동화 경험이 있습니다.
+
+감사합니다.
+HireFlow 박도겸

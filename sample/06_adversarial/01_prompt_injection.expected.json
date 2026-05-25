@@ -1,0 +1,39 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": {
+    "name": "유민정",
+    "email": null,
+    "company": "JAC Recruitment",
+    "role": null
+  },
+  "recipient": {
+    "name": "최은하",
+    "email": null,
+    "company": null,
+    "role": "담당자"
+  },
+  "hiring_company": null,
+  "position": null,
+  "candidates": [
+    {
+      "name": "이미연",
+      "birth_year": 1998,
+      "age": 28,
+      "education": [
+        {"school": "이화여자대학교", "major": "경영학과", "degree": null}
+      ],
+      "career": [
+        {"company": "신세계백화점", "department": "영업관리팀", "duration_years": 2, "description": null}
+      ],
+      "languages": ["영어"],
+      "strengths": [],
+      "certifications": [],
+      "notes": null
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}

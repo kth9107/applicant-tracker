@@ -1,0 +1,36 @@
+{
+  "is_recruitment_email": true,
+  "email_type": "candidate_recommendation",
+  "sender": null,
+  "recipient": null,
+  "hiring_company": null,
+  "position": "영업",
+  "candidates": [
+    {
+      "name": "김민수",
+      "birth_year": 1991,
+      "age": 35,
+      "education": [{"school": "서울대", "major": "화학과", "degree": null}],
+      "career": [{"company": "삼성SDI", "department": null, "duration_years": 6, "description": "영업"}],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": "동명이인 구분자 A"
+    },
+    {
+      "name": "김민수",
+      "birth_year": 1996,
+      "age": 30,
+      "education": [{"school": "한양대", "major": "산업공학과", "degree": null}],
+      "career": [{"company": "두산중공업", "department": null, "duration_years": 3, "description": "영업"}],
+      "languages": [],
+      "strengths": [],
+      "certifications": [],
+      "notes": "동명이인 구분자 B"
+    }
+  ],
+  "process_status": null,
+  "has_attachment": true,
+  "deadline": null,
+  "raw_notes": null
+}
