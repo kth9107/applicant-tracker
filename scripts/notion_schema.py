@@ -22,6 +22,7 @@ NOTION_VERSION = "2022-06-28"
 FIXED_PROPERTIES = {
     "기업명": {"rich_text": {}},
     "포지션": {"rich_text": {}},
+    "회사담당자": {"rich_text": {}},
     "생년": {"number": {}},
     "나이": {"number": {}},
     "희망연봉": {"rich_text": {}},
@@ -150,7 +151,7 @@ def ensure_fixed_schema(database_id: str, apply: bool) -> list[str]:
             + ", ".join(remaining_old)
         )
 
-    current_fixed = [name for name in ["기업명", "포지션", "이름", "생년", "나이", "희망연봉", "최종연봉", "기타"] if name in properties or name == "이름"]
+    current_fixed = [name for name in ["기업명", "포지션", "회사담당자", "이름", "생년", "나이", "희망연봉", "최종연봉", "기타"] if name in properties or name == "이름"]
     logs.append(f"적용 기준 고정 컬럼: {', '.join(current_fixed)}")
 
     dynamic = [

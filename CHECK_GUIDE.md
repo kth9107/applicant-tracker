@@ -1,6 +1,6 @@
 # 지원자 트래커 확인 가이드
 
-이 문서는 프로젝트 루트(`/Users/ku/projects/applicant-tracker`)에서 실행하는 기준입니다.
+이 문서는 프로젝트 루트(`/Users/ku/workspace/projects/applicant-tracker`)에서 실행하는 기준입니다.
 
 ## 1. DB 초기화
 
@@ -169,7 +169,7 @@ Notion DB에 새 컬럼을 추가하면 AI 파싱 프롬프트가 현재 Notion 
 현재 고정 컬럼:
 
 ```text
-기업명, 포지션, 이름, 생년, 나이, 희망연봉, 최종연봉, 기타
+기업명, 포지션, 회사담당자, 이름, 생년, 나이, 희망연봉, 최종연봉, 기타
 ```
 
 지원되는 추가 컬럼 타입:
@@ -236,6 +236,20 @@ Discord Developer Portal에서 봇 설정도 확인해야 합니다.
 
 ```bash
 python3 scripts/discord_bot.py
+```
+
+운영용 자동 재시작 서비스 등록:
+
+```bash
+python3 scripts/install_discord_bot_service.py --load
+```
+
+등록 후 Discord에서 `!재시작예약`을 입력하면 봇이 새 작업을 막고 진행 중 작업 완료 후 종료합니다. launchd가 자동으로 다시 시작하므로 터미널에서 별도 재시작 명령을 실행하지 않아도 됩니다.
+
+서비스 해제:
+
+```bash
+python3 scripts/install_discord_bot_service.py --unload
 ```
 
 가상환경 실행:
@@ -538,4 +552,50 @@ python3 scripts/store.py \
   --input-file scripts/test_data/sample_discord_kim_taehyun.txt \
   --input-json /tmp/extracted.json \
   --output-file /tmp/store_from_json.json
+```
+
+## Microsoft Teams 봇 병행 운영
+
+Discord 봇은 그대로 유지하고, Teams 봇은 별도 프로세스로 실행합니다. 두 봇 모두 같은 `message_processor.py`와 SQLite/Notion 저장 계층을 사용합니다.
+
+필수 `.env` 값:
+
+```env
+TEAMS_APP_ID=
+TEAMS_APP_PASSWORD=
+TEAMS_TENANT_ID=
+TEAMS_BOT_PORT=5678
+TEAMS_PUBLIC_ENDPOINT=https://your-ngrok-or-domain/api/messages
+```
+
+로컬 실행:
+
+```bash
+./.venv/bin/python scripts/teams_bot.py
+```
+
+헬스체크:
+
+```bash
+curl http://127.0.0.1:5678/health
+```
+
+ngrok 테스트 예시:
+
+```bash
+ngrok http 5678
+```
+
+ngrok 주소가 바뀌면 `.env`의 `TEAMS_PUBLIC_ENDPOINT`와 Azure Bot의 Messaging endpoint를 모두 `https://.../api/messages` 형식으로 갱신해야 합니다.
+
+launchd 서비스 등록:
+
+```bash
+python3 scripts/install_teams_bot_service.py --load
+```
+
+서비스 해제:
+
+```bash
+python3 scripts/install_teams_bot_service.py --unload
 ```

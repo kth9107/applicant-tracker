@@ -50,6 +50,7 @@ FEEDBACK_COMMANDS = {"!문제점", "!feedback", "!피드백"}
 AUDIT_COMMANDS = {"!감사", "!audit"}
 FULL_AUDIT_COMMANDS = {"!전체감사", "!fullaudit", "!audit_all"}
 RECOVERY_COMMANDS = {"!복구", "!recover"}
+RESTART_COMMANDS = {"!재시작예약", "!restart", "!restart_safe"}
 
 
 @dataclass
@@ -341,6 +342,10 @@ def build_command_help() -> str:
         "!대기",
         "- 현재 대기 중/진행 중/최근 완료 작업을 보여줍니다.",
         "",
+        "!재시작예약",
+        "- 새 작업을 막고 진행 중 작업이 끝난 뒤 봇을 안전하게 종료합니다.",
+        "- launchd 같은 실행 관리자가 등록되어 있으면 자동으로 다시 시작됩니다.",
+        "",
         "!상태",
         "- 봇, AI, Notion, 병렬 처리 설정 상태를 보여줍니다.",
         "",
@@ -554,6 +559,72 @@ def clean_message_content(message: discord.Message) -> str:
     return content
 
 
+def restart_blocking_reply() -> str:
+    # 안전 재시작 대기 중 새 작업이 들어오면 처리하지 않고 안내한다.
+    return "\n".join([
+        "봇 재시작이 예약되어 새 작업을 받지 않습니다.",
+        "- 진행 중 작업이 끝나면 자동으로 종료됩니다.",
+        "- launchd 서비스로 실행 중이면 곧 다시 시작됩니다.",
+    ])
+
+
+def append_change_log(lines: list[str], change_log: dict) -> None:
+    # 저장/업데이트 결과에서 실제 변경된 필드를 Discord 답장에 요약한다.
+    if not change_log:
+        return
+    action = change_log.get("action")
+    changes = change_log.get("changes") or []
+    if action == "created":
+        lines.append("- 데이터 변경: 신규 생성")
+    elif action == "updated":
+        lines.append("- 데이터 변경: 기존 지원자 업데이트")
+    if changes:
+        preview = []
+        for change in changes[:6]:
+            label = change.get("label") or change.get("field") or "필드"
+            before = clean_display_value(change.get("before")) or "빈 값"
+            after = clean_display_value(change.get("after")) or "빈 값"
+            if action == "created":
+                preview.append(f"{label}={after}")
+            else:
+                preview.append(f"{label}: {before} -> {after}")
+        lines.append(f"- 변경 상세: {'; '.join(preview)}")
+
+
+def make_command_job(message: discord.Message, log_id: str, command_name: str, stage: str) -> JobRecord:
+    # 감사/복구 같은 명령어 작업도 !대기에서 볼 수 있도록 JobRecord로 만든다.
+    return JobRecord(
+        log_id=log_id,
+        message_id=message.id,
+        author_name=getattr(message.author, "display_name", str(message.author)),
+        candidate_name=command_name,
+        company_name="명령어",
+        birth_year=None,
+        age_international=None,
+        age_korean=None,
+        status="queued",
+        stage=stage,
+        created_at=time.time(),
+    )
+
+
+def audit_command_summary(result: dict) -> str:
+    # 터미널/진행 로그에 남길 감사 결과 한 줄 요약.
+    notion_sync = result.get("notion_sync") or {}
+    parts = [
+        f"scope={result.get('scope')}",
+        f"diffs={result.get('diff_count')}",
+        f"message_findings={result.get('message_finding_count')}",
+    ]
+    if notion_sync:
+        parts.extend([
+            f"deleted={len(notion_sync.get('deleted_applicants') or [])}",
+            f"updated={len(notion_sync.get('updated_applicant_ids') or [])}",
+            f"created={len(notion_sync.get('created_applicant_ids') or [])}",
+        ])
+    return " ".join(parts)
+
+
 def build_reply(response: dict, extraction_method: str = "", elapsed: str = "") -> str:
     # 저장 결과 JSON을 사용자가 읽기 쉬운 Discord 답장으로 변환한다.
     #
@@ -590,6 +661,8 @@ def build_reply(response: dict, extraction_method: str = "", elapsed: str = "") 
                 lines.append(f"  부족 정보: {', '.join(missing)}")
 
             notion = result.get("notion") or {}
+            append_change_log(lines, result.get("change_log") or {})
+
             if result.get("status") == "ok" and notion.get("action") == "error":
                 lines.append("  Notion 동기화 실패")
         return "\n".join(lines)
@@ -638,6 +711,7 @@ def build_reply(response: dict, extraction_method: str = "", elapsed: str = "") 
     missing = missing_info_labels(diagnostics)
     if missing:
         lines.append(f"- 부족 정보: {', '.join(missing)}")
+    append_change_log(lines, response.get("change_log") or {})
     lines.append(f"- {notion_text}")
     return "\n".join(lines)
 
@@ -737,11 +811,34 @@ def main() -> None:
     max_parallel = int(os.getenv("DISCORD_MAX_PARALLEL", "3"))
     semaphore = asyncio.Semaphore(max_parallel)
     tracker = JobTracker()
+    restart_requested = False
+    accepting_new_jobs = True
 
     intents = discord.Intents.default()
     intents.message_content = True
 
     client = discord.Client(intents=intents)
+
+    async def wait_for_safe_restart(log_id: str, accepted_message: discord.Message) -> None:
+        # 새 작업을 막은 뒤 현재 active 작업이 재시작 작업만 남을 때까지 기다린다.
+        while True:
+            active, _ = await tracker.snapshot()
+            running_others = [job for job in active if job.log_id != log_id]
+            if not running_others:
+                break
+            await tracker.update_stage(log_id, f"진행 중 작업 {len(running_others)}건 대기")
+            await asyncio.sleep(2)
+
+        await tracker.update_stage(log_id, "안전 종료 준비")
+        await accepted_message.reply(
+            "\n".join([
+                "진행 중 작업이 없어 봇을 안전하게 종료합니다.",
+                "- launchd 서비스가 등록되어 있으면 자동으로 다시 시작됩니다.",
+            ])
+        )
+        await tracker.finish(log_id, "완료", "재시작을 위한 안전 종료")
+        print("[restart] safe shutdown requested; closing Discord client")
+        await client.close()
 
     @client.event
     async def on_ready() -> None:
@@ -754,6 +851,7 @@ def main() -> None:
 
     @client.event
     async def on_message(message: discord.Message) -> None:
+        nonlocal accepting_new_jobs, restart_requested
         # 새 Discord 메시지를 받았을 때 호출되는 메인 이벤트 핸들러.
         #
         # 지정 채널이 아니거나 봇 자신의 메시지면 무시한다. 명령어별로 답장을
@@ -836,48 +934,110 @@ def main() -> None:
                 await message.reply(await build_queue_reply(tracker, semaphore, max_parallel))
                 return
 
+            if is_exact_command(content, RESTART_COMMANDS):
+                if restart_requested:
+                    await message.reply("이미 재시작이 예약되어 있습니다. 진행 현황은 !대기 로 확인해주세요.")
+                    return
+                restart_requested = True
+                accepting_new_jobs = False
+                log_id = make_log_id(message.channel.id, message.id)
+                job = make_command_job(message, log_id, "재시작예약", "새 작업 차단")
+                await tracker.add(job)
+                await tracker.mark_running(log_id, "진행 중 작업 확인")
+                accepted_message = await message.reply(
+                    "\n".join([
+                        "봇 안전 재시작을 예약했습니다.",
+                        "- 지금부터 새 지원자/감사/복구 작업은 받지 않습니다.",
+                        "- 진행 중 작업이 끝나면 봇을 종료합니다.",
+                        "- launchd 서비스가 등록되어 있으면 자동으로 다시 시작됩니다.",
+                        "- 진행 현황은 !대기 로 확인할 수 있습니다.",
+                    ])
+                )
+                print(f"[restart] requested by {getattr(message.author, 'display_name', str(message.author))}")
+                asyncio.create_task(wait_for_safe_restart(log_id, accepted_message))
+                return
+
+            if not accepting_new_jobs and (
+                parse_audit_limit_command(content) is not None
+                or is_exact_command(content, RECOVERY_COMMANDS)
+                or is_exact_command(content, FULL_AUDIT_COMMANDS)
+                or has_command_prefix(content, APPLICANT_COMMANDS)
+                or has_command_prefix(content, UPDATE_COMMANDS)
+                or not content.startswith("!")
+            ):
+                await message.reply(restart_blocking_reply())
+                return
+
             audit_limit = parse_audit_limit_command(content)
             if audit_limit is not None:
+                log_id = make_log_id(message.channel.id, message.id)
+                job = make_command_job(message, log_id, f"감사 {audit_limit}", "감사 대기")
+                await tracker.add(job)
                 accepted_message = await message.reply(
                     "\n".join([
                         f"최근 {audit_limit}명 데이터 감사를 시작합니다.",
                         "SQLite, 최근 메시지, AI JSON, Notion 값을 비교합니다.",
+                        "- 진행 현황은 !대기 로 확인할 수 있습니다.",
                     ])
                 )
                 try:
+                    await tracker.mark_running(log_id, "SQLite/Notion 감사 실행")
+                    print(f"[command-running] {format_applicant_summary(job)} stage=SQLite/Notion 감사 실행")
                     result = await asyncio.to_thread(
                         run_audit,
                         audit_limit,
                         True,
                         f"recent_{audit_limit}",
                     )
+                    await tracker.update_stage(log_id, "감사 리포트 작성 완료")
+                    print(f"[command-completed] {format_applicant_summary(job)} {audit_command_summary(result)}")
+                    await tracker.finish(log_id, "완료", f"감사 완료: 불일치 {result.get('diff_count', 0)}건")
                     await accepted_message.reply(build_discord_audit_reply(result))
                 except Exception as exc:
+                    await tracker.finish(log_id, "오류", str(exc))
+                    print(f"[command-error] {format_applicant_summary(job)} error={exc}")
                     await accepted_message.reply(f"감사 실행 실패: {exc}")
                 return
 
             if is_exact_command(content, RECOVERY_COMMANDS):
+                log_id = make_log_id(message.channel.id, message.id)
+                job = make_command_job(message, log_id, "복구", "복구 대기")
+                await tracker.add(job)
                 accepted_message = await message.reply(
                     "\n".join([
                         "Notion 복구를 시작합니다.",
                         "SQLite에는 남아 있지만 Notion에 없거나 연결되지 않은 지원자를 다시 생성합니다.",
+                        "- 진행 현황은 !대기 로 확인할 수 있습니다.",
                     ])
                 )
                 try:
+                    await tracker.mark_running(log_id, "Notion 복구 실행")
+                    print(f"[command-running] {format_applicant_summary(job)} stage=Notion 복구 실행")
                     result = await asyncio.to_thread(recover_sqlite_to_notion, True)
+                    await tracker.update_stage(log_id, "복구 리포트 작성 완료")
+                    print(f"[command-completed] {format_applicant_summary(job)} recovered={result.get('recovered_count')} skipped={result.get('skipped_count')}")
+                    await tracker.finish(log_id, "완료", f"복구 완료: {result.get('recovered_count', 0)}명")
                     await accepted_message.reply(build_discord_recovery_reply(result))
                 except Exception as exc:
+                    await tracker.finish(log_id, "오류", str(exc))
+                    print(f"[command-error] {format_applicant_summary(job)} error={exc}")
                     await accepted_message.reply(f"복구 실행 실패: {exc}")
                 return
 
             if is_exact_command(content, FULL_AUDIT_COMMANDS):
+                log_id = make_log_id(message.channel.id, message.id)
+                job = make_command_job(message, log_id, "전체감사", "전체감사 대기")
+                await tracker.add(job)
                 accepted_message = await message.reply(
                     "\n".join([
                         "전체 데이터 감사를 시작합니다.",
                         "SQLite와 Notion 전체 값을 비교하고 Notion 삭제분을 DB에 반영합니다.",
+                        "- 진행 현황은 !대기 로 확인할 수 있습니다.",
                     ])
                 )
                 try:
+                    await tracker.mark_running(log_id, "전체 SQLite/Notion 감사 실행")
+                    print(f"[command-running] {format_applicant_summary(job)} stage=전체 SQLite/Notion 감사 실행")
                     result = await asyncio.to_thread(
                         run_audit,
                         None,
@@ -886,8 +1046,13 @@ def main() -> None:
                         False,
                         True,
                     )
+                    await tracker.update_stage(log_id, "전체감사 리포트 작성 완료")
+                    print(f"[command-completed] {format_applicant_summary(job)} {audit_command_summary(result)}")
+                    await tracker.finish(log_id, "완료", f"전체감사 완료: 불일치 {result.get('diff_count', 0)}건")
                     await accepted_message.reply(build_discord_audit_reply(result))
                 except Exception as exc:
+                    await tracker.finish(log_id, "오류", str(exc))
+                    print(f"[command-error] {format_applicant_summary(job)} error={exc}")
                     await accepted_message.reply(f"전체 감사 실행 실패: {exc}")
                 return
 

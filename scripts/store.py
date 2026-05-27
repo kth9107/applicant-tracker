@@ -32,6 +32,7 @@ NOTION_API_BASE = "https://api.notion.com/v1"
 NOTION_VERSION = "2022-06-28"
 NOTION_COMPANY_PROP = "기업명"
 NOTION_POSITION_PROP = "포지션"
+NOTION_CONTACT_PERSON_PROP = "회사담당자"
 NOTION_BIRTH_YEAR_PROP = "생년"
 NOTION_AGE_PROP = "나이"
 NOTION_EXPECTED_SALARY_PROP = "희망연봉"
@@ -63,6 +64,7 @@ STATUS_ALIASES = {
 NOTION_REQUIRED_PROPERTIES = {
     NOTION_COMPANY_PROP: {"rich_text": {}},
     NOTION_POSITION_PROP: {"rich_text": {}},
+    NOTION_CONTACT_PERSON_PROP: {"rich_text": {}},
     NOTION_BIRTH_YEAR_PROP: {"number": {}},
     NOTION_AGE_PROP: {"number": {}},
     NOTION_EXPECTED_SALARY_PROP: {"rich_text": {}},
@@ -77,7 +79,6 @@ RETIRED_NOTION_PROPERTIES = {
     "이메일",
     "전화",
     "지원회사",
-    "회사담당자",
     "지원직무",
     "스킬",
     "비고",
@@ -362,10 +363,13 @@ def extract_candidate_name(text: str) -> str:
     # - `김태현 1991년 만 34세`
     # - `SM엔터 주식회사 서인영 지원자 1989년생`
     # - `케미콘 주식회사의 김태현 지원자님`
+    # - `지원자 봉하선 연봉 3000`
     #
     patterns = [
         r"성명\s*[:：]\s*([가-힣A-Za-z\s]+)",
         r"이름\s*[:：]\s*([가-힣A-Za-z\s]+)",
+        r"지원자\s*[:：]?\s*([가-힣A-Za-z]{2,20})\s+(?:연봉|희망\s*연봉|최종\s*연봉|현재\s*연봉|직무|포지션|생년|만\s*\d{1,2}\s*세|(?:19|20)\d{2})",
+        r"지원자\s*[:：]?\s*([가-힣A-Za-z]{2,20})\b",
         r"(?:주식회사|㈜|\(주\)|코리아|Korea)의\s*([가-힣A-Za-z]{2,20})\s*지원자",
         r"[가-힣A-Za-z0-9&\- ]+(?:주식회사|㈜|\(주\)|코리아|Korea)의\s*([가-힣A-Za-z]{2,20})",
         r"[가-힣A-Za-z0-9&\- ]+(?:주식회사|㈜|\(주\)|코리아|Korea)\s+([가-힣A-Za-z]{2,20})\s*지원자",
@@ -588,6 +592,8 @@ def extract_status(text: str) -> str:
 
 def extract_intent(text: str) -> str:
     # 입력이 신규 등록인지, 정보 업데이트인지, 상태 업데이트인지 판단한다.
+    if re.search(r"지원자\s*[:：]?\s*[가-힣A-Za-z]{2,20}.*(?:연봉|희망\s*연봉|최종\s*연봉|현재\s*연봉|직무|포지션|상태)", text):
+        return "update"
     if any(keyword in text for keyword in ["업데이트", "변경", "수정", "추가"]):
         status_keywords = ["서류합격", "서류불합격", "면접대기", "면접완료", "최종합격", "최종불합격", "보류"]
         if any(keyword in text for keyword in status_keywords):
@@ -1548,6 +1554,84 @@ def resolve_company_name_from_existing_context(
     return normalize_optional_company_name(current_company or "")
 
 
+CHANGE_LOG_FIELDS = [
+    ("company_name", "기업명"),
+    ("contact_person", "회사담당자"),
+    ("candidate_name", "지원자"),
+    ("birth_year", "생년"),
+    ("age_international", "나이"),
+    ("position", "포지션"),
+    ("salary_expected", "희망연봉"),
+    ("salary_current", "최종연봉"),
+    ("notes", "기타"),
+    ("status", "상태"),
+]
+
+
+def applicant_change_snapshot(conn: sqlite3.Connection, applicant_id: int) -> dict[str, Any]:
+    # 지원자 저장 전후 차이를 남기기 위한 비교용 스냅샷을 만든다.
+    row = conn.execute(
+        """
+        SELECT
+            a.id,
+            c.name AS company_name,
+            c.contact_person AS contact_person,
+            a.name AS candidate_name,
+            a.birth_year,
+            a.age_international,
+            a.position,
+            a.salary_expected,
+            a.salary_current,
+            a.notes,
+            a.status,
+            a.notion_page_id
+        FROM applicants a
+        LEFT JOIN companies c ON c.id = a.company_id
+        WHERE a.id = ?
+        """,
+        (applicant_id,),
+    ).fetchone()
+    return dict(row) if row else {}
+
+
+def normalize_change_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    return str(value).strip()
+
+
+def build_applicant_change_log(
+    action: str,
+    applicant_id: int,
+    before: Optional[dict[str, Any]],
+    after: dict[str, Any],
+) -> dict[str, Any]:
+    # 생성/업데이트 결과에서 실제로 달라진 필드만 구조화한다.
+    before = before or {}
+    changes = []
+    for key, label in CHANGE_LOG_FIELDS:
+        before_value = normalize_change_value(before.get(key))
+        after_value = normalize_change_value(after.get(key))
+        if before_value == after_value:
+            continue
+        if action == "created" and not after_value:
+            continue
+        changes.append({
+            "field": key,
+            "label": label,
+            "before": before_value,
+            "after": after_value,
+        })
+    return {
+        "action": action,
+        "applicant_id": applicant_id,
+        "notion_page_id": after.get("notion_page_id") or "",
+        "changes": changes,
+    }
+
+
 def upsert_applicant(
     conn: sqlite3.Connection,
     parsed: dict[str, Any],
@@ -1584,6 +1668,8 @@ def upsert_applicant(
     )
 
     if existing:
+        parsed["_storage_action"] = "updated"
+        parsed["_storage_before"] = applicant_change_snapshot(conn, int(existing["id"]))
         conn.execute(
             """
             UPDATE applicants
@@ -1624,6 +1710,8 @@ def upsert_applicant(
         )
         return int(existing["id"])
 
+    parsed["_storage_action"] = "created"
+    parsed["_storage_before"] = {}
     cursor = conn.execute(
         """
         INSERT INTO applicants (
@@ -1907,6 +1995,7 @@ def build_notion_properties(parsed: dict[str, Any]) -> dict:
         "이름": {"title": [{"text": {"content": parsed["candidate_name"]}}]},
         NOTION_COMPANY_PROP: notion_rich_text(parsed.get("company_name") or ""),
         NOTION_POSITION_PROP: notion_rich_text(parsed.get("position") or ""),
+        NOTION_CONTACT_PERSON_PROP: notion_rich_text(parsed.get("contact_person") or ""),
         NOTION_EXPECTED_SALARY_PROP: notion_rich_text(parsed.get("salary_expected") or ""),
         NOTION_CURRENT_SALARY_PROP: notion_rich_text(parsed.get("salary_current") or ""),
         NOTION_NOTES_PROP: notion_rich_text(parsed.get("notes") or ""),
@@ -2199,6 +2288,7 @@ def build_success_response(
     notion: dict[str, Any],
     diagnostics: Optional[dict[str, Any]] = None,
     errors: Optional[list[dict[str, str]]] = None,
+    change_log: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     # CLI/Discord/하네스가 공통으로 사용하는 성공 응답 JSON을 만든다.
     return {
@@ -2212,6 +2302,7 @@ def build_success_response(
         "parsed": parsed,
         "diagnostics": diagnostics or build_parse_diagnostics(parsed),
         "errors": errors or [],
+        "change_log": change_log or {},
     }
 
 
@@ -2242,6 +2333,7 @@ def build_parse_diagnostics(parsed: dict[str, Any]) -> dict[str, Any]:
     }
     optional = {
         "company_name": "기업명",
+        "contact_person": "회사담당자",
         "birth_year": "생년",
         "age_international": "나이",
         "position": "포지션",
@@ -2256,6 +2348,7 @@ def build_parse_diagnostics(parsed: dict[str, Any]) -> dict[str, Any]:
     ]
     optional_hints = {
         "company_name": bool(extract_company_name(raw_text) != "UNKNOWN"),
+        "contact_person": bool(extract_contact_person(raw_text)),
         "birth_year": bool(re.search(r"(?:19|20)\d{2}년생|생년|출생", raw_text)),
         "age_international": bool(re.search(r"만\s*\d{1,2}\s*세|나이", raw_text)),
         "position": bool(extract_position(raw_text)),
@@ -2464,6 +2557,12 @@ def store_parsed_data(
                 return duplicate_error
         company_id = upsert_company(conn, parsed)
         applicant_id = upsert_applicant(conn, parsed, company_id)
+        change_log = build_applicant_change_log(
+            parsed.get("_storage_action") or "updated",
+            applicant_id,
+            parsed.get("_storage_before") or {},
+            applicant_change_snapshot(conn, applicant_id),
+        )
         event_id = insert_email_event(conn, parsed, applicant_id, company_id, source_email_file)
         conn.commit()
 
@@ -2508,6 +2607,7 @@ def store_parsed_data(
             source_email_file=source_email_file,
             diagnostics=final_diagnostics,
             errors=errors,
+            change_log=change_log,
         )
     except Exception as exc:
         conn.rollback()

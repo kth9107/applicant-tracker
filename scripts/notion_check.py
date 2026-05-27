@@ -23,6 +23,7 @@ from notion_sync import (
 )
 from store import (
     build_notion_sync_parsed,
+    extract_contact_person,
     save_applicant_notion_page_id,
     sync_notion,
 )
@@ -32,7 +33,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 ENV_PATH = BASE_DIR / ".env"
 AUDIT_REPORT_DIR = BASE_DIR / "reports" / "audit"
 DISCORD_LOG_DIR = BASE_DIR / "reports" / "discord_messages"
-FIXED_COLUMNS = ["기업명", "포지션", "이름", "생년", "나이", "희망연봉", "최종연봉", "기타"]
+FIXED_COLUMNS = ["기업명", "포지션", "회사담당자", "이름", "생년", "나이", "희망연봉", "최종연봉", "기타"]
 DEFAULT_AUDIT_REPORT_KEEP = 40
 
 
@@ -194,6 +195,7 @@ def fetch_sqlite_audit_rows(limit: Optional[int]) -> list[dict[str, Any]]:
                 a.updated_at,
                 c.name AS 기업명,
                 a.position AS 포지션,
+                c.contact_person AS 회사담당자,
                 a.name AS 이름,
                 a.birth_year AS 생년,
                 a.age_international AS 나이,
@@ -307,6 +309,74 @@ def message_json_findings(row: dict[str, Any]) -> tuple[list[str], dict[str, Any
     }
 
 
+SYNC_CHANGE_COLUMNS = [
+    ("기업명", "기업명"),
+    ("회사담당자", "회사담당자"),
+    ("이름", "지원자"),
+    ("생년", "생년"),
+    ("나이", "나이"),
+    ("포지션", "포지션"),
+    ("희망연봉", "희망연봉"),
+    ("최종연봉", "최종연봉"),
+    ("기타", "기타"),
+]
+
+
+def sqlite_record_by_notion_page_id(conn: sqlite3.Connection, notion_page_id: str) -> dict[str, Any]:
+    row = conn.execute(
+        """
+        SELECT
+            a.id,
+            a.notion_page_id,
+            c.name AS 기업명,
+            c.contact_person AS 회사담당자,
+            a.name AS 이름,
+            a.birth_year AS 생년,
+            a.age_international AS 나이,
+            a.position AS 포지션,
+            a.salary_expected AS 희망연봉,
+            a.salary_current AS 최종연봉,
+            a.notes AS 기타
+        FROM applicants a
+        LEFT JOIN companies c ON c.id = a.company_id
+        WHERE a.notion_page_id = ?
+        """,
+        (notion_page_id,),
+    ).fetchone()
+    return dict(row) if row else {}
+
+
+def normalized_record_diff(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, str]]:
+    changes = []
+    for key, label in SYNC_CHANGE_COLUMNS:
+        before_value = normalized_compare_value(before.get(key))
+        after_value = normalized_compare_value(after.get(key))
+        if before_value == after_value:
+            continue
+        changes.append({
+            "column": key,
+            "label": label,
+            "before": before_value,
+            "after": after_value,
+        })
+    return changes
+
+
+def notion_record_summary(record: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "notion_page_id": record.get("notion_page_id", ""),
+        "name": record.get("candidate_name", ""),
+        "company": record.get("company_name", ""),
+        "contact_person": record.get("contact_person", ""),
+        "position": record.get("position", ""),
+        "birth_year": record.get("birth_year"),
+        "age_international": record.get("age_international"),
+        "salary_expected": record.get("salary_expected", ""),
+        "salary_current": record.get("salary_current", ""),
+        "notes": record.get("notes", ""),
+    }
+
+
 def sync_sqlite_from_notion_pages(notion_pages: list[dict[str, Any]], apply: bool) -> dict[str, Any]:
     # Notion 활성 page 기준으로 SQLite를 정리/갱신한다.
     #
@@ -333,17 +403,34 @@ def sync_sqlite_from_notion_pages(notion_pages: list[dict[str, Any]], apply: boo
 
         updated_ids = []
         created_ids = []
+        updated_records = []
+        created_records = []
         if apply:
             for row in delete_targets:
                 delete_applicant(conn, int(row["id"]))
 
             for record in records:
+                before = sqlite_record_by_notion_page_id(conn, record["notion_page_id"])
                 updated_id = update_sqlite_from_notion_page(conn, record)
                 if updated_id:
                     updated_ids.append(updated_id)
+                    after = sqlite_record_by_notion_page_id(conn, record["notion_page_id"])
+                    changes = normalized_record_diff(before, after)
+                    if changes:
+                        updated_records.append({
+                            "applicant_id": updated_id,
+                            "name": after.get("이름", ""),
+                            "company": after.get("기업명", ""),
+                            "notion_page_id": record["notion_page_id"],
+                            "changes": changes,
+                        })
                 elif record["notion_page_id"] not in existing_page_ids and record["candidate_name"]:
                     created_id = create_sqlite_applicant_from_notion_record(conn, record)
                     created_ids.append(created_id)
+                    created_records.append({
+                        "applicant_id": created_id,
+                        **notion_record_summary(record),
+                    })
 
             conn.commit()
         else:
@@ -364,6 +451,8 @@ def sync_sqlite_from_notion_pages(notion_pages: list[dict[str, Any]], apply: boo
             ],
             "updated_applicant_ids": updated_ids,
             "created_applicant_ids": created_ids,
+            "updated_records": updated_records,
+            "created_records": created_records,
         }
     except Exception:
         conn.rollback()
@@ -377,7 +466,7 @@ def create_sqlite_applicant_from_notion_record(
     record: dict[str, Any],
 ) -> int:
     # SQLite에 없는 Notion 활성 row를 지원자 row로 생성한다.
-    company_id = ensure_company(conn, record["company_name"])
+    company_id = ensure_company(conn, record["company_name"], record.get("contact_person") or "")
     cursor = conn.execute(
         """
         INSERT INTO applicants (
@@ -460,6 +549,15 @@ def recover_sqlite_to_notion(write_reports: bool = True) -> dict[str, Any]:
                     "old_page_id": old_page_id,
                     "new_page_id": notion["page_id"],
                     "action": notion.get("action", ""),
+                    "data": {
+                        "company": parsed.get("company_name", ""),
+                        "contact_person": parsed.get("contact_person", ""),
+                        "position": parsed.get("position", ""),
+                        "birth_year": parsed.get("birth_year"),
+                        "age_international": parsed.get("age_international"),
+                        "salary_expected": parsed.get("salary_expected", ""),
+                        "salary_current": parsed.get("salary_current", ""),
+                    },
                 })
 
         conn.commit()
@@ -558,6 +656,10 @@ def audit_rows(
                 missing_from_message.append("원문 메시지가 있으나 기타가 비어 있습니다.")
             if parsed_summary.get("company_name") and not normalized_compare_value(row.get("기업명")):
                 missing_from_message.append("파싱 결과에는 회사명이 있으나 SQLite 기업명이 비어 있습니다.")
+            if parsed_summary.get("contact_person") and not normalized_compare_value(row.get("회사담당자")):
+                missing_from_message.append("파싱 결과에는 회사 담당자가 있으나 SQLite 회사담당자가 비어 있습니다.")
+            if raw_text and extract_contact_person(raw_text) and not normalized_compare_value(row.get("회사담당자")):
+                missing_from_message.append("원문에 회사 담당자가 있으나 저장값이 비어 있습니다.")
 
         record = {
             "applicant_id": row.get("id"),
@@ -676,6 +778,18 @@ def render_audit_markdown(result: dict[str, Any]) -> str:
             lines.append(
                 f"- 삭제: {deleted.get('name') or ''} / {deleted.get('company') or ''} / {deleted.get('notion_page_id') or ''}"
             )
+        for updated in (notion_sync.get("updated_records") or [])[:20]:
+            change_text = "; ".join(
+                f"{change.get('label')}: {change.get('before') or '-'} -> {change.get('after') or '-'}"
+                for change in updated.get("changes", [])
+            )
+            lines.append(
+                f"- 갱신: {updated.get('name') or ''} / {updated.get('company') or ''} / {change_text}"
+            )
+        for created in (notion_sync.get("created_records") or [])[:20]:
+            lines.append(
+                f"- 생성: {created.get('name') or ''} / {created.get('company') or ''} / 담당자 {created.get('contact_person') or '-'} / {created.get('notion_page_id') or ''}"
+            )
     if result["suggestions"]:
         for suggestion in result["suggestions"][:30]:
             lines.append(f"- {suggestion}")
@@ -765,6 +879,22 @@ def build_discord_audit_reply(result: dict[str, Any]) -> str:
             f"- Notion 값 DB 갱신: {len(notion_sync.get('updated_applicant_ids') or [])}명",
             f"- Notion 기준 DB 생성: {len(notion_sync.get('created_applicant_ids') or [])}명",
         ])
+        changed_records = notion_sync.get("updated_records") or []
+        created_records = notion_sync.get("created_records") or []
+        deleted_records = notion_sync.get("deleted_applicants") or []
+        if changed_records or created_records or deleted_records:
+            lines.append("")
+            lines.append("변경 로그")
+        for updated in changed_records[:3]:
+            change_text = "; ".join(
+                f"{change.get('label')}: {change.get('before') or '-'} -> {change.get('after') or '-'}"
+                for change in updated.get("changes", [])[:3]
+            )
+            lines.append(f"- 갱신: {updated.get('name') or ''} / {change_text}")
+        for created in created_records[:3]:
+            lines.append(f"- 생성: {created.get('name') or ''} / {created.get('company') or ''} / 담당자 {created.get('contact_person') or '-' }")
+        for deleted in deleted_records[:3]:
+            lines.append(f"- 삭제: {deleted.get('name') or ''} / {deleted.get('company') or ''}")
     if result.get("report_paths"):
         lines.append(f"- 리포트: {result['report_paths'].get('latest')}")
     if result["suggestions"]:
@@ -790,7 +920,16 @@ def build_discord_recovery_reply(result: dict[str, Any]) -> str:
         lines.append("")
         lines.append("복구된 지원자")
         for item in result["recovered"][:10]:
-            lines.append(f"- {item['name']} ({item['action']})")
+            data = item.get("data") or {}
+            details = " / ".join(
+                part for part in [
+                    data.get("company"),
+                    f"담당자 {data.get('contact_person')}" if data.get("contact_person") else "",
+                    data.get("position"),
+                ] if part
+            )
+            suffix = f" / {details}" if details else ""
+            lines.append(f"- {item['name']} ({item['action']}){suffix}")
     return "\n".join(lines)
 
 
@@ -815,7 +954,7 @@ def list_database_pages(limit: int) -> None:
 
     print(f"Notion DB: {database_id}")
     print(f"조회 결과: {len(data.get('results', []))}건")
-    print("page_id | 이름 | 기업명 | 포지션 | 생년 | 나이 | 희망연봉 | 최종연봉 | 기타 | 최근수정")
+    print("page_id | 이름 | 기업명 | 포지션 | 회사담당자 | 생년 | 나이 | 희망연봉 | 최종연봉 | 기타 | 최근수정")
     print("-" * 100)
 
     for page in data.get("results", []):
@@ -827,6 +966,7 @@ def list_database_pages(limit: int) -> None:
                     property_value(props.get("이름", {})),
                     property_value(props.get("기업명", {})),
                     property_value(props.get("포지션", {})),
+                    property_value(props.get("회사담당자", {})),
                     property_value(props.get("생년", {})),
                     property_value(props.get("나이", {})),
                     property_value(props.get("희망연봉", {})),

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.21/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.21",
+  "version": "1.0.0",
+  "id": "fdb33858-8a93-4e1b-bf48-a1b991927593",
+  "developer": {
+    "name": "Applicant Tracker",
+    "websiteUrl": "https://6e99-175-116-198-53.ngrok-free.app",
+    "privacyUrl": "https://6e99-175-116-198-53.ngrok-free.app",
+    "termsOfUseUrl": "https://6e99-175-116-198-53.ngrok-free.app"
+  },
+  "name": {
+    "short": "Applicant Tracker",
+    "full": "Applicant Tracker Teams Bot"
+  },
+  "description": {
+    "short": "지원자 트래커 봇",
+    "full": "Teams에서 지원자 저장, 업데이트, 감사, 복구 명령을 실행합니다. Discord 봇과 병행 운영됩니다."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#2563EB",
+  "bots": [
+    {
+      "botId": "62fa86a5-ac11-4c83-a6fc-5db85949456e",
+      "scopes": [
+        "personal",
+        "team",
+        "groupchat"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "6e99-175-116-198-53.ngrok-free.app"
+  ]
+}

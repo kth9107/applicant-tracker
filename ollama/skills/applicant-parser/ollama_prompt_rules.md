@@ -15,13 +15,14 @@
 - `SM엔터 주식회사 서인영 지원자 1989년생`은 company.name=`SM엔터 주식회사`, applicant.name=`서인영`, birth_year=1989로 추출한다.
 - `케미콘 주식회사의 김태현 지원자님 지원직무는 백엔드 개발자로 업데이트`는 intent=`update`, updates.position=`백엔드 개발자`, applicant.position=`백엔드 개발자`로 추출한다.
 - `김태현 1991년 만 34세`는 applicant.name=`김태현`, birth_year=1991, age_international=34로 추출한다.
+- `지원자 봉하선 연봉 3000`은 applicant.name=`봉하선`, salary_current=`3000`, intent=`update`로 추출한다.
 - `영어, 일본어 능숙`, `JLPT 1급`, `토익 900점`, 개발언어/툴/자격증은 skills 배열에 넣는다.
 - 학력은 education, 경력은 experience, 분류가 애매하지만 저장 가치가 있는 정보는 notes에 넣는다.
 - 다음주/추후/협의 가능처럼 정확하지 않은 날짜 표현은 날짜로 추측하지 말고 notes에 넣는다.
 - 희망연봉은 salary_expected에 저장. 최종연봉·현재연봉·연봉처럼 희망연봉이 아닌 모든 연봉 표현은 salary_current에 저장. 없으면 null.
 - 연봉 금액은 원문 표기를 그대로 유지한다 (예: '5,500만원', '6000만원').
-- Notion 고정 컬럼은 기업명/포지션/이름/생년/나이/희망연봉/최종연봉/기타다. 이 값은 extra_properties에 넣지 않는다.
-- 고정 컬럼 매핑: 기업명=company.name, 포지션=applicant.position, 이름=applicant.name, 생년=applicant.birth_year, 나이=applicant.age_international, 희망연봉=applicant.salary_expected, 최종연봉=applicant.salary_current, 기타=applicant.notes.
+- Notion 고정 컬럼은 기업명/포지션/회사담당자/이름/생년/나이/희망연봉/최종연봉/기타다. 이 값은 extra_properties에 넣지 않는다.
+- 고정 컬럼 매핑: 기업명=company.name, 포지션=applicant.position, 회사담당자=company.contact_person, 이름=applicant.name, 생년=applicant.birth_year, 나이=applicant.age_international, 희망연봉=applicant.salary_expected, 최종연봉=applicant.salary_current, 기타=applicant.notes.
 - Notion에 나중에 추가된 동적 컬럼만 extra_properties에 넣는다.
-- 상태, 이메일, 전화, 담당자, 스킬은 현재 Notion 고정 컬럼이 아니다. 원문에 있으면 JSON 표준 필드에는 넣되, extra_properties에는 넣지 않는다.
+- 상태, 이메일, 전화, 스킬은 현재 Notion 고정 컬럼이 아니다. 담당자는 회사담당자 고정 컬럼으로 쓰는 company.contact_person에 넣고, extra_properties에는 넣지 않는다.
 - 재파싱 요청을 받으면 누락 필드를 먼저 보완한다. 원문에 없는 값은 추측하지 않는다.

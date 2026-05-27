@@ -59,6 +59,7 @@ description: Ollama runtime skill for parsing Korean applicant intake messages i
 
 - `희망연봉`은 반드시 `salary_expected`에 넣는다.
 - `최종연봉`, `현재연봉`, `현연봉`, 단순 `연봉`은 `salary_current`에 넣는다.
+- `지원자 봉하선 연봉 3000`처럼 짧은 문장은 지원자 이름을 `봉하선`, 최종연봉을 `3000`으로 추출한다.
 - `희망연봉 5500`, `최종연봉 5,500만원`, `연봉 6000만원`처럼 단위가 일부 생략돼도 원문 표기를 최대한 보존한다.
 
 ## Quality Gate
@@ -71,11 +72,12 @@ description: Ollama runtime skill for parsing Korean applicant intake messages i
 
 ## Fixed Notion Columns
 
-Notion 고정 컬럼은 `기업명`, `포지션`, `이름`, `생년`, `나이`, `희망연봉`, `최종연봉`, `기타`다.
+Notion 고정 컬럼은 `기업명`, `포지션`, `회사담당자`, `이름`, `생년`, `나이`, `희망연봉`, `최종연봉`, `기타`다.
 각 컬럼의 JSON 매핑은 아래와 같다.
 
 - `기업명`: `company.name`
 - `포지션`: `applicant.position`
+- `회사담당자`: `company.contact_person`
 - `이름`: `applicant.name`
 - `생년`: `applicant.birth_year`
 - `나이`: `applicant.age_international`

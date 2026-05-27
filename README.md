@@ -45,7 +45,7 @@ applicant-tracker/
 프로젝트 루트에서 실행합니다.
 
 ```bash
-cd /Users/ku/projects/applicant-tracker
+cd /Users/ku/workspace/projects/applicant-tracker
 ```
 
 가상환경을 새로 만들 경우:
@@ -235,6 +235,7 @@ python3 scripts/notion_schema.py --apply
 ```text
 기업명
 포지션
+회사담당자
 이름
 생년
 나이
@@ -379,6 +380,18 @@ python3 scripts/discord_bot.py
 ```
 
 정상 실행되면 터미널에 봇 이름, 버전, 입력 채널, Notion 동기화 여부, 병렬 처리 개수가 출력됩니다.
+
+운영 중 코드 변경을 반영할 때는 안전 재시작을 사용할 수 있습니다. 먼저 launchd 서비스로 등록합니다.
+
+```bash
+python3 scripts/install_discord_bot_service.py --load
+```
+
+이후 Discord에서 `!재시작예약`을 입력하면 새 작업을 막고, 진행 중 작업이 모두 끝난 뒤 봇이 종료됩니다. launchd가 등록되어 있으면 종료 후 자동으로 다시 시작됩니다. 수동으로 서비스를 내릴 때는 아래 명령을 사용합니다.
+
+```bash
+python3 scripts/install_discord_bot_service.py --unload
+```
 
 ## Discord 사용 방법
 
@@ -714,7 +727,7 @@ sudo chown -R $(whoami):staff scripts
 처음 설치:
 
 ```bash
-cd /Users/ku/projects/applicant-tracker
+cd /Users/ku/workspace/projects/applicant-tracker
 source .venv/bin/activate
 python3 -m pip install -r requirements.txt
 python3 scripts/init_db.py
@@ -790,4 +803,50 @@ python3 scripts/cleanup_reports.py --keep 40
 
 ```bash
 python3 scripts/cleanup_reports.py --apply --keep 40
+```
+
+## Microsoft Teams 봇 병행 운영
+
+Discord 봇은 그대로 유지하고, Teams 봇은 별도 프로세스로 실행합니다. 두 봇 모두 같은 `message_processor.py`와 SQLite/Notion 저장 계층을 사용합니다.
+
+필수 `.env` 값:
+
+```env
+TEAMS_APP_ID=
+TEAMS_APP_PASSWORD=
+TEAMS_TENANT_ID=
+TEAMS_BOT_PORT=5678
+TEAMS_PUBLIC_ENDPOINT=https://your-ngrok-or-domain/api/messages
+```
+
+로컬 실행:
+
+```bash
+./.venv/bin/python scripts/teams_bot.py
+```
+
+헬스체크:
+
+```bash
+curl http://127.0.0.1:5678/health
+```
+
+ngrok 테스트 예시:
+
+```bash
+ngrok http 5678
+```
+
+ngrok 주소가 바뀌면 `.env`의 `TEAMS_PUBLIC_ENDPOINT`와 Azure Bot의 Messaging endpoint를 모두 `https://.../api/messages` 형식으로 갱신해야 합니다.
+
+launchd 서비스 등록:
+
+```bash
+python3 scripts/install_teams_bot_service.py --load
+```
+
+서비스 해제:
+
+```bash
+python3 scripts/install_teams_bot_service.py --unload
 ```

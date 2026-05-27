@@ -104,6 +104,7 @@ def notion_page_to_record(page: dict[str, Any]) -> dict[str, Any]:
         "candidate_name": property_text(props, "이름"),
         "company_name": company_name,
         "company_canonical_name": canonical_company_name(company_name),
+        "contact_person": property_text(props, "회사담당자"),
         "birth_year": birth_year,
         "age": age_international,
         "age_international": age_international,
@@ -133,21 +134,31 @@ def get_sqlite_applicants_with_notion(conn: sqlite3.Connection) -> list[sqlite3.
     ).fetchall()
 
 
-def ensure_company(conn: sqlite3.Connection, company_name: str) -> Optional[int]:
+def ensure_company(conn: sqlite3.Connection, company_name: str, contact_person: str = "") -> Optional[int]:
     # Notion의 지원회사 이름을 SQLite 회사 id로 맞춘다.
     if not company_name:
         return None
 
     company = get_company_by_name(conn, company_name)
     if company:
+        if contact_person:
+            conn.execute(
+                """
+                UPDATE companies
+                SET contact_person = COALESCE(NULLIF(?, ''), contact_person),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (contact_person, int(company["id"])),
+            )
         return int(company["id"])
 
     cursor = conn.execute(
         """
-        INSERT INTO companies (name, updated_at)
-        VALUES (?, CURRENT_TIMESTAMP)
+        INSERT INTO companies (name, contact_person, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
         """,
-        (company_name,),
+        (company_name, contact_person),
     )
     return int(cursor.lastrowid)
 
@@ -171,7 +182,7 @@ def update_sqlite_from_notion_page(
     if not row:
         return None
 
-    company_id = ensure_company(conn, record["company_name"])
+    company_id = ensure_company(conn, record["company_name"], record.get("contact_person") or "")
     if company_id is None and row["company_id"] is not None:
         company_id = int(row["company_id"])
     conn.execute(

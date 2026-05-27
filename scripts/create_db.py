@@ -12,7 +12,23 @@ from pathlib import Path
 # 모든 경로는 이 파일 위치가 아니라 프로젝트 루트를 기준으로 계산한다.
 # 이렇게 해야 VS Code, 터미널, Discord 봇에서 실행 위치가 달라도 같은 DB를 본다.
 BASE_DIR = Path(__file__).resolve().parents[1]
+ENV_PATH = BASE_DIR / ".env"
 DEFAULT_DB_PATH = BASE_DIR / "db" / "applicants.db"
+
+
+def load_env_file() -> None:
+    # DB 경로를 결정하기 전에 `.env`의 SQLITE_PATH를 환경변수로 올린다.
+    if not ENV_PATH.exists():
+        return
+    for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip())
+
+
+load_env_file()
 
 # SQLITE_PATH가 `.env` 또는 OS 환경변수에 있으면 그 값을 우선한다.
 # 운영 DB 위치를 바꾸고 싶을 때 코드 수정 없이 설정만 바꾸기 위한 장치다.

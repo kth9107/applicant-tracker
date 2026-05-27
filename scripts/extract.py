@@ -182,7 +182,7 @@ def load_dynamic_notion_prompt_rules() -> str:
     return "\n".join([
         "Notion DB에 아래 추가 컬럼이 있습니다.",
         "원문에서 해당 값이 보이면 applicant.extra_properties 객체에 컬럼명 그대로 넣으세요.",
-        "기업명/포지션/이름/생년/나이/희망연봉/최종연봉/기타는 고정 컬럼이므로 extra_properties에 넣지 마세요.",
+        "기업명/포지션/회사담당자/이름/생년/나이/희망연봉/최종연봉/기타는 고정 컬럼이므로 extra_properties에 넣지 마세요.",
         "원문에 없으면 추측하지 말고 넣지 마세요.",
         *dynamic,
         '예: {"applicant": {"extra_properties": {"입사가능일": "2026-07-01"}}}',
@@ -278,12 +278,13 @@ PROMPT = """당신은 채용 관련 이메일에서 후보자 정보를 추출�
 - birth_year가 있으면 age_korean은 현재연도 - birth_year + 1로 계산하기.
 - 나이가 없고 생년만 있으면 age_international은 현재연도 - birth_year로 계산하기.
 - "김태현 1991년 만 34세"처럼 자유 형식이어도 후보자 이름은 김태현, birth_year는 1991, age_international은 34로 추출하기.
+- "지원자 봉하선 연봉 3000"처럼 짧은 업데이트 문장은 applicant.name="봉하선", salary_current="3000", intent="update"로 추출하기.
 - 희망연봉은 반드시 salary_expected에 저장.
 - 최종연봉·현재연봉·연봉처럼 희망연봉이 아닌 모든 연봉 표현은 salary_current에 저장.
 - 연봉 금액은 원문 표기를 그대로 유지 (예: '5,500만원', '6000만원').
-- Notion 고정 컬럼은 기업명/포지션/이름/생년/나이/희망연봉/최종연봉/기타이며, 이 값은 extra_properties에 넣지 않기.
-- 고정 컬럼 매핑은 기업명=company.name, 포지션=applicant.position, 이름=applicant.name, 생년=applicant.birth_year, 나이=applicant.age_international, 희망연봉=applicant.salary_expected, 최종연봉=applicant.salary_current, 기타=applicant.notes.
-- 상태, 이메일, 전화, 담당자, 스킬은 표준 JSON 필드에는 넣되 현재 Notion 고정 컬럼이 아니므로 extra_properties에 중복으로 넣지 않기.
+- Notion 고정 컬럼은 기업명/포지션/회사담당자/이름/생년/나이/희망연봉/최종연봉/기타이며, 이 값은 extra_properties에 넣지 않기.
+- 고정 컬럼 매핑은 기업명=company.name, 포지션=applicant.position, 회사담당자=company.contact_person, 이름=applicant.name, 생년=applicant.birth_year, 나이=applicant.age_international, 희망연봉=applicant.salary_expected, 최종연봉=applicant.salary_current, 기타=applicant.notes.
+- 상태, 이메일, 전화, 스킬은 표준 JSON 필드에는 넣되 현재 Notion 고정 컬럼이 아니므로 extra_properties에 중복으로 넣지 않기. 담당자는 회사담당자 고정 컬럼으로 쓰는 company.contact_person에 넣기.
 - 신규 추천/등록이면 intent는 create.
 - "업데이트", "변경", "수정", "추가"처럼 기존 지원자 정보를 바꾸는 문장이면 intent는 update.
 - "서류합격으로 변경", "면접대기로 변경"처럼 상태만 바꾸는 문장이면 intent는 status_update.
@@ -474,21 +475,90 @@ def extract_with_feedback(
     return result
 
 
+def extract_json_from_response(full: str) -> dict:
+    # Ollama 응답에서 JSON 객체를 추출한다.
+    #
+    # qwen3.5는 format:json 지시에도 불구하고 한국어 설명문을 앞에 붙이거나,
+    # ```json ... ``` 마크다운 블록으로 감싸는 경우가 있다. 세 가지 케이스를 처리한다:
+    #   1. ```json ... ``` 블록: 첫 줄과 마지막 ``` 제거 후 파싱
+    #   2. 순수 JSON: 그대로 파싱
+    #   3. 설명문 + JSON: { 가 처음 나오는 위치부터 마지막 } 까지 추출
+    #
+    stripped = full.strip()
+
+    # 케이스 1: 마크다운 코드 블록
+    if stripped.startswith("```"):
+        stripped = stripped.split("\n", 1)[-1]  # 첫 줄(```json) 제거
+        stripped = stripped.rsplit("```", 1)[0]  # 마지막 ``` 제거
+        stripped = stripped.strip()
+
+    # 케이스 2: 순수 JSON (가장 흔한 정상 케이스)
+    if stripped.startswith("{") or stripped.startswith("["):
+        return json.loads(stripped)
+
+    # 케이스 3: 설명문 앞뒤로 붙은 경우 — { ... } 블록만 추출
+    # 중첩 JSON을 올바르게 처리하기 위해 bracket 카운터 방식 사용
+    start = stripped.find("{")
+    if start == -1:
+        raise ValueError(f"JSON 객체를 찾을 수 없습니다. 응답 앞부분: {repr(stripped[:200])}")
+    depth = 0
+    end = -1
+    in_string = False
+    escape_next = False
+    for i, ch in enumerate(stripped[start:], start=start):
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == "\\" and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end == -1:
+        raise ValueError(f"JSON 객체가 닫히지 않았습니다. 응답 앞부분: {repr(stripped[:200])}")
+    return json.loads(stripped[start : end + 1])
+
+
 def extract_with_ollama(prompt: str) -> dict:
     # Ollama `/api/chat`로 JSON 추출을 수행한다.
+    #
+    # stream=True: 스트리밍으로 수신하여 타임아웃을 방지한다.
+    #   - stream=False 는 전체 응답이 올 때까지 block되어 qwen3.5 thinking 모드에서 타임아웃 발생.
+    #   - stream=True 는 첫 토큰부터 수신하므로 타임아웃 없이 동작한다.
+    # /no_think + think=False: qwen3/qwen3.5 계열의 thinking 모드를 비활성화해 속도를 높인다.
     r = requests.post(
         f"{OLLAMA_URL}/api/chat",
         json={
             "model": MODEL,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": f"/no_think\n{prompt}"}],
             "format": "json",
-            "stream": False,
+            "stream": True,
+            "think": False,
             "options": {"temperature": 0.1},
         },
+        stream=True,
         timeout=OLLAMA_TIMEOUT,
     )
     r.raise_for_status()
-    return json.loads(r.json()["message"]["content"])
+    full = ""
+    for line in r.iter_lines():
+        if not line:
+            continue
+        chunk = json.loads(line)
+        full += chunk.get("message", {}).get("content", "")
+        if chunk.get("done"):
+            break
+    return extract_json_from_response(full)
 
 
 def extract_with_gemini(prompt: str) -> dict:
